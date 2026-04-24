@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statGroups = document.getElementById('stat-groups');
   const statToClose = document.getElementById('stat-to-close');
   const statToKeep = document.getElementById('stat-to-keep');
+  const staleTabsMsg = document.getElementById('stale-tabs-msg');
 
   // Smart Actions
   const btnAutoClean = document.getElementById('btn-auto-clean');
@@ -39,41 +40,73 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 
   function init() {
-    fetchCurrentTabs();
-    setupEventListeners();
+    migrateLegacySavedTabs(() => {
+      fetchCurrentTabs();
+      setupEventListeners();
+    });
+  }
+
+  function migrateLegacySavedTabs(callback) {
+    chrome.storage.local.get(['savedTabs', 'vaultSessions'], (result) => {
+      if (result.savedTabs && result.savedTabs.length > 0) {
+        const vault = result.vaultSessions || [];
+        vault.push({
+          id: 'legacy_' + Date.now(),
+          title: 'Legacy Saved Tabs',
+          tabs: result.savedTabs,
+          createdAt: Date.now()
+        });
+        chrome.storage.local.set({ vaultSessions: vault }, () => {
+          chrome.storage.local.remove('savedTabs', callback);
+        });
+      } else {
+        callback();
+      }
+    });
   }
 
   // --- Data Processing ---
 
   function fetchCurrentTabs() {
     chrome.tabs.query({ currentWindow: true }, (tabs) => {
-      currentTabs = tabs;
-      processTabs();
-      generateSummary();
-      renderGroupedTabs();
+      chrome.storage.local.get({ tabMetadata: {} }, (result) => {
+        currentTabs = tabs;
+        processTabs(result.tabMetadata);
+        generateSummary();
+        renderGroupedTabs();
+      });
     });
   }
 
-  function processTabs() {
+  function processTabs(metadata) {
     const urlSet = new Set();
     processedTabs = [];
     groupedTabs = {};
+    const now = Date.now();
 
     currentTabs.forEach(tab => {
       const isImportant = tab.active || tab.pinned;
       const isDuplicate = !isImportant && urlSet.has(tab.url); // Don't mark active as duplicate
       urlSet.add(tab.url);
 
+      // Metadata info
+      const tabMeta = metadata[tab.id] || { createdAt: now, note: '' };
+      const ageMs = now - tabMeta.createdAt;
+      const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
+
       // Check inactivity
       let isInactive = false;
       if (!isImportant) {
         if (tab.lastAccessed) {
-          isInactive = (Date.now() - tab.lastAccessed) > INACTIVE_THRESHOLD_MS;
+          isInactive = (now - tab.lastAccessed) > INACTIVE_THRESHOLD_MS;
         } else {
           // Fallback if lastAccessed not supported: everything not active/pinned is inactive
           isInactive = true; 
         }
       }
+
+      // Mark as stale if it's inactive AND older than 60 mins
+      const isStale = isInactive && ageMs > INACTIVE_THRESHOLD_MS;
 
       // Determine domain
       let domain = 'other';
@@ -85,7 +118,10 @@ document.addEventListener('DOMContentLoaded', () => {
         domain = tab.url.split('/')[2] || 'other'; 
       }
 
-      const processedTab = { ...tab, isImportant, isDuplicate, isInactive, domain };
+      const processedTab = { 
+        ...tab, isImportant, isDuplicate, isInactive, isStale, domain, 
+        ageHours, note: tabMeta.note 
+      };
       processedTabs.push(processedTab);
 
       if (!groupedTabs[domain]) {
@@ -122,6 +158,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (statToClose) statToClose.textContent = tabsToClose;
     if (statToKeep) statToKeep.textContent = tabsToKeep;
+
+    const staleCount = processedTabs.filter(t => t.isStale).length;
+    if (staleTabsMsg) {
+      staleTabsMsg.textContent = staleCount > 0 
+        ? `${staleCount} tabs haven't been used in a while.` 
+        : `All tabs are recently used.`;
+    }
   }
 
   // --- UI View Logic ---
@@ -172,44 +215,36 @@ Do you want to continue?`;
   }
 
   function endDayFlow() {
-    // ALWAYS keep the active tab and pinned tabs
-    const tabsToKeep = processedTabs.filter(t => t.isImportant);
-    const tabsToProcess = processedTabs.filter(t => !t.isImportant); 
+    // Save ALL tabs in the window
+    const tabsToProcess = [...processedTabs]; 
     
     if (tabsToProcess.length === 0) {
-      alert("Only important tabs (active/pinned) remain.");
+      alert("No tabs to save.");
       return;
     }
 
+    const staleCount = tabsToProcess.filter(t => t.isStale).length;
+    let staleNudge = '';
+    if (staleCount > 0) {
+      staleNudge = `\n  (Warning: Includes ${staleCount} stale tabs opened over an hour ago. Still needed?)`;
+    }
+
     const confirmMsg = `You are about to:
-- Save and close ${tabsToProcess.length} tabs
-- Keep ${tabsToKeep.length} tabs (active + pinned)
+- Save ALL ${tabsToProcess.length} tabs in this window${staleNudge}
+- Close the entire browser window
 
 Do you want to continue?`;
 
     if (confirm(confirmMsg)) {
-      saveSessionSnapshot(() => {
-        // Save to "Saved Tabs"
-        const tabsData = tabsToProcess.map(t => ({
-          title: t.title,
-          url: t.url,
-          favIconUrl: t.favIconUrl,
-          savedAt: Date.now()
-        }));
+      const suggestedName = prompt("Save as:", "End of Day Session");
+      if (suggestedName === null) return; // Cancelled
 
-        chrome.storage.local.get({ savedTabs: [] }, (result) => {
-          const updatedSavedTabs = [...result.savedTabs, ...tabsData];
-          chrome.storage.local.set({ savedTabs: updatedSavedTabs }, () => {
-            const idsToClose = tabsToProcess.map(t => t.id);
-            
-            // Safety: If no tabs remain (which shouldn't happen due to isImportant, but just in case)
-            if (tabsToKeep.length === 0) {
-              chrome.tabs.create({}, () => {
-                chrome.tabs.remove(idsToClose, () => window.close());
-              });
-            } else {
-              chrome.tabs.remove(idsToClose, () => window.close());
-            }
+      saveSessionSnapshot(() => {
+        saveSession(tabsToProcess, suggestedName || "End of Day Session", () => {
+          const idsToClose = tabsToProcess.map(t => t.id);
+          chrome.tabs.remove(idsToClose, () => {
+             // If for some reason the window doesn't close when all tabs close, force it:
+             window.close(); // Closes the extension popup
           });
         });
       });
@@ -256,7 +291,18 @@ Do you want to continue?`;
       
       const header = document.createElement('div');
       header.className = 'domain-group-header';
-      header.textContent = `${domain} (${groupTabs.length})`;
+      header.innerHTML = `<span>${domain} (${groupTabs.length})</span>`;
+      
+      const saveGroupBtn = document.createElement('button');
+      saveGroupBtn.className = 'save-group-btn';
+      saveGroupBtn.textContent = 'Save Session';
+      saveGroupBtn.addEventListener('click', () => {
+        saveSession(groupTabs, `${domain} Session`, () => {
+          alert(`Saved ${groupTabs.length} tabs from ${domain} to Vault.`);
+        });
+      });
+      header.appendChild(saveGroupBtn);
+      
       groupContainer.appendChild(header);
 
       const ul = document.createElement('ul');
@@ -283,6 +329,21 @@ Do you want to continue?`;
 
     const faviconUrl = tab.favIconUrl || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTRhM2I4IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEzIDJINnYxNm03LTE2djRjMCAxLjEgLjkgMiAyIDJoNG0tNi02aDZsOCA4djgiLz48L3N2Zz4=';
 
+    let ageText = tab.ageHours > 0 ? `Opened ${tab.ageHours}h ago` : `Opened <1h ago`;
+    let contextLine = '';
+    let textColor = 'var(--text-secondary)';
+
+    if (tab.note) {
+      contextLine = `${escapeHtml(tab.note)} • ${ageText}`;
+    } else if (tab.isStale) {
+      contextLine = `${ageText} • Possibly no longer needed`;
+      textColor = 'var(--warning-color)';
+    } else {
+      contextLine = `${ageText}`;
+    }
+
+    let staleNudgeHtml = `<div class="age-nudge" style="color: ${textColor}">${contextLine}</div>`;
+
     li.innerHTML = `
       ${labelsHtml ? `<div class="tab-labels">${labelsHtml}</div>` : ''}
       <div class="tab-info">
@@ -292,12 +353,27 @@ Do you want to continue?`;
           <div class="tab-url" title="${escapeHtml(tab.url)}">${escapeHtml(tab.url)}</div>
         </div>
       </div>
-      <div class="tab-actions">
+      ${staleNudgeHtml}
+      <input type="text" class="tab-note-input" placeholder="Add a note... (e.g. DSA Practice)" value="${escapeHtml(tab.note)}">
+      <div class="tab-actions" style="margin-top: 0.25rem;">
         <button class="action-btn close-btn" data-action="close">Close</button>
         <button class="action-btn keep-btn" data-action="keep">Keep</button>
         <button class="action-btn save-btn" data-action="save">Save</button>
       </div>
     `;
+
+    // Note saving logic
+    const noteInput = li.querySelector('.tab-note-input');
+    noteInput.addEventListener('input', (e) => {
+      chrome.storage.local.get({ tabMetadata: {} }, (result) => {
+        const metadata = result.tabMetadata || {};
+        if (!metadata[tab.id]) {
+          metadata[tab.id] = { url: tab.url, title: tab.title, createdAt: Date.now(), note: '' };
+        }
+        metadata[tab.id].note = e.target.value;
+        chrome.storage.local.set({ tabMetadata: metadata });
+      });
+    });
 
     // Actions
     li.querySelector('.close-btn').addEventListener('click', () => {
@@ -326,58 +402,110 @@ Do you want to continue?`;
     return li;
   }
 
+  function saveSession(tabsToSave, customTitle = null, callback = null) {
+    if (!tabsToSave || tabsToSave.length === 0) return;
+
+    let title = customTitle;
+    if (!title) {
+      // Auto-name based on most frequent domain
+      const domainCounts = {};
+      let maxDomain = '';
+      let maxCount = 0;
+      tabsToSave.forEach(t => {
+        let d = t.domain || 'other';
+        domainCounts[d] = (domainCounts[d] || 0) + 1;
+        if (domainCounts[d] > maxCount) {
+          maxCount = domainCounts[d];
+          maxDomain = d;
+        }
+      });
+      
+      if (maxDomain && maxDomain !== 'other') {
+        title = `${maxDomain.charAt(0).toUpperCase() + maxDomain.slice(1)} Session`;
+      } else {
+        title = `Session (${tabsToSave.length} tabs)`;
+      }
+    }
+
+    const sessionData = {
+      id: 'session_' + Date.now(),
+      title: title,
+      tabs: tabsToSave.map(t => ({
+        title: t.title,
+        url: t.url,
+        favIconUrl: t.favIconUrl,
+        domain: t.domain
+      })),
+      createdAt: Date.now()
+    };
+
+    chrome.storage.local.get({ vaultSessions: [] }, (result) => {
+      const updatedVault = [sessionData, ...result.vaultSessions];
+      chrome.storage.local.set({ vaultSessions: updatedVault }, () => {
+        if (callback) callback();
+      });
+    });
+  }
+
   // --- Saved Tabs Logic ---
 
-  function renderSavedTabs() {
+  function renderVaultSessions() {
     savedTabList.innerHTML = '<div class="loading-state">Loading...</div>';
-    chrome.storage.local.get({ savedTabs: [] }, (result) => {
-      const tabs = result.savedTabs;
+    chrome.storage.local.get({ vaultSessions: [] }, (result) => {
+      const sessions = result.vaultSessions;
       savedTabList.innerHTML = '';
       
-      if (tabs.length === 0) {
-        savedTabList.innerHTML = '<div class="empty-state">No saved tabs yet.</div>';
+      if (sessions.length === 0) {
+        savedTabList.innerHTML = '<div class="empty-state">No saved sessions yet.</div>';
         clearSavedBtn.classList.add('hidden');
         return;
       }
 
       clearSavedBtn.classList.remove('hidden');
-      tabs.sort((a, b) => b.savedAt - a.savedAt).forEach((tab, index) => {
+      sessions.forEach((session, index) => {
         const li = document.createElement('li');
-        li.className = 'tab-card';
-        const dateStr = new Date(tab.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        const faviconUrl = tab.favIconUrl || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTRhM2I4IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEzIDJINnYxNm03LTE2djRjMCAxLjEgLjkgMiAyIDJoNG0tNi02aDZsOCA4djgiLz48L3N2Zz4=';
+        li.className = 'session-card';
+        const ageMs = Date.now() - session.createdAt;
+        const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
+        let timeStr = ageHours > 0 ? `${ageHours} hours ago` : `Just now`;
 
         li.innerHTML = `
-          <div class="tab-info">
-            <img src="${faviconUrl}" class="tab-favicon" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTRhM2I4IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEzIDJINnYxNm03LTE2djRjMCAxLjEgLjkgMiAyIDJoNG0tNi02aDZsOCA4djgiLz48L3N2Zz4='">
-            <div class="tab-text">
-              <div class="tab-title" title="${escapeHtml(tab.title)}">${escapeHtml(tab.title)}</div>
-              <div class="tab-url" title="${escapeHtml(tab.url)}">${escapeHtml(tab.url)} - ${dateStr}</div>
-            </div>
+          <div class="session-header">
+            <input type="text" class="session-title-input" value="${escapeHtml(session.title)}">
           </div>
-          <div class="tab-actions">
-            <button class="action-btn open-btn">Open</button>
+          <div class="session-meta">
+            ${session.tabs.length} tabs • ${timeStr}
+          </div>
+          <div class="tab-actions" style="margin-top: 0.5rem;">
+            <button class="action-btn open-btn">Restore</button>
             <button class="action-btn close-btn">Delete</button>
           </div>
         `;
 
-        li.querySelector('.open-btn').addEventListener('click', () => {
-          chrome.tabs.create({ url: tab.url, active: false });
-          removeSavedTab(index, li);
+        // Rename logic
+        const titleInput = li.querySelector('.session-title-input');
+        titleInput.addEventListener('change', (e) => {
+          session.title = e.target.value;
+          chrome.storage.local.set({ vaultSessions: sessions });
         });
 
-        li.querySelector('.close-btn').addEventListener('click', () => removeSavedTab(index, li));
+        li.querySelector('.open-btn').addEventListener('click', () => {
+          session.tabs.forEach(tab => chrome.tabs.create({ url: tab.url, active: false }));
+          removeSession(index, li);
+        });
+
+        li.querySelector('.close-btn').addEventListener('click', () => removeSession(index, li));
         savedTabList.appendChild(li);
       });
     });
   }
 
-  function removeSavedTab(index, card) {
-    chrome.storage.local.get({ savedTabs: [] }, (result) => {
-      const newTabs = result.savedTabs.filter((_, idx) => idx !== index);
-      chrome.storage.local.set({ savedTabs: newTabs }, () => {
+  function removeSession(index, card) {
+    chrome.storage.local.get({ vaultSessions: [] }, (result) => {
+      const newSessions = result.vaultSessions.filter((_, idx) => idx !== index);
+      chrome.storage.local.set({ vaultSessions: newSessions }, () => {
         card.style.opacity = '0';
-        setTimeout(() => renderSavedTabs(), 200);
+        setTimeout(() => renderVaultSessions(), 200);
       });
     });
   }
@@ -391,14 +519,14 @@ Do you want to continue?`;
     btnReview.addEventListener('click', () => showView('review'));
     btnViewSavedHome.addEventListener('click', () => {
       showView('saved');
-      renderSavedTabs();
+      renderVaultSessions();
     });
 
     backBtns.forEach(btn => btn.addEventListener('click', () => showView('summary')));
 
     clearSavedBtn.addEventListener('click', () => {
-      if(confirm('Delete all saved tabs?')) {
-        chrome.storage.local.set({ savedTabs: [] }, () => renderSavedTabs());
+      if(confirm('Delete all saved sessions in the vault?')) {
+        chrome.storage.local.set({ vaultSessions: [] }, () => renderVaultSessions());
       }
     });
 

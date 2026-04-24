@@ -40,15 +40,9 @@
         </div>
       </div>
 
-      <div class="action-impact-stats">
-        <div class="impact-stat">
-          <span class="impact-label">To be closed:</span>
-          <span class="impact-val danger" id="stat-to-close">0</span>
-        </div>
-        <div class="impact-stat">
-          <span class="impact-label">To be kept:</span>
-          <span class="impact-val success" id="stat-to-keep">0</span>
-        </div>
+      <div class="human-centered-stats" style="text-align: center; margin-bottom: 1.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+        <p id="stale-tabs-msg" style="margin-bottom: 0.25rem;">0 tabs haven't been used in a while.</p>
+        <p id="impact-msg" style="color: var(--text-primary); font-size: 0.95rem;">You will close <strong class="danger" id="stat-to-close">0</strong> tabs and keep <strong class="success" id="stat-to-keep">0</strong>.</p>
       </div>
 
       <div class="smart-actions">
@@ -65,7 +59,7 @@
           <div class="btn-desc">Manually select tabs</div>
         </button>
         <button id="btn-view-saved-home" class="smart-btn secondary-btn" style="margin-top: 0.5rem;">
-          <div class="btn-title">View Saved Tabs</div>
+          <div class="btn-title">Open Session Vault</div>
         </button>
       </div>
     </div>
@@ -87,12 +81,12 @@
     <div id="saved-tabs-section" class="view-section hidden">
       <div class="tabs-header">
         <button class="text-btn back-to-home-btn">← Back</button>
-        <h2>Saved for Later</h2>
+        <h2>Session Vault</h2>
       </div>
       <ul id="saved-tab-list" class="tab-list">
         <!-- Saved tab cards will be injected here -->
       </ul>
-      <button id="clear-saved-btn" class="action-btn danger-btn hidden" style="margin-top: 1rem; width: 100%;">Clear All Saved</button>
+      <button id="clear-saved-btn" class="action-btn danger-btn hidden" style="margin-top: 1rem; width: 100%;">Clear Vault</button>
     </div>
 
   </div>
