@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tab Killer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1><span class="highlight">Tab</span> Killer</h1>
+      <p class="subtitle">End of day cleanup.</p>
+      <div class="header-actions">
+        <button id="restore-session-btn" class="action-btn keep-btn">Restore Last Session</button>
+      </div>
+    </header>
+
+    <!-- VIEW 1: Summary / End Day Flow (Default) -->
+    <div id="summary-view" class="view-section">
+      <div class="summary-panel">
+        <div class="stat-box">
+          <span class="stat-val" id="stat-total">0</span>
+          <span class="stat-label">Total Tabs</span>
+        </div>
+        <div class="stat-box warning">
+          <span class="stat-val" id="stat-dupes">0</span>
+          <span class="stat-label">Duplicates</span>
+        </div>
+        <div class="stat-box muted">
+          <span class="stat-val" id="stat-inactive">0</span>
+          <span class="stat-label">Inactive</span>
+        </div>
+        <div class="stat-box info">
+          <span class="stat-val" id="stat-groups">0</span>
+          <span class="stat-label">Groups</span>
+        </div>
+      </div>
+
+      <div class="action-impact-stats">
+        <div class="impact-stat">
+          <span class="impact-label">To be closed:</span>
+          <span class="impact-val danger" id="stat-to-close">0</span>
+        </div>
+        <div class="impact-stat">
+          <span class="impact-label">To be kept:</span>
+          <span class="impact-val success" id="stat-to-keep">0</span>
+        </div>
+      </div>
+
+      <div class="smart-actions">
+        <button id="btn-auto-clean" class="smart-btn primary-btn">
+          <div class="btn-title">Auto Clean</div>
+          <div class="btn-desc">Close duplicates & inactive</div>
+        </button>
+        <button id="btn-save-close" class="smart-btn accent-btn">
+          <div class="btn-title">Save All & Close</div>
+          <div class="btn-desc">Save session, close all unpinned</div>
+        </button>
+        <button id="btn-review" class="smart-btn secondary-btn">
+          <div class="btn-title">Review Tabs</div>
+          <div class="btn-desc">Manually select tabs</div>
+        </button>
+        <button id="btn-view-saved-home" class="smart-btn secondary-btn" style="margin-top: 0.5rem;">
+          <div class="btn-title">View Saved Tabs</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- VIEW 2: Review Tabs -->
+    <div id="review-view" class="view-section hidden">
+      <div class="tabs-header">
+        <button class="text-btn back-to-home-btn">← Back</button>
+        <h2 id="current-tabs-title">Review (<span id="tab-count">0</span>)</h2>
+      </div>
+      
+      <!-- Container for grouped tabs -->
+      <div id="grouped-tab-list" class="grouped-tab-list">
+        <div class="loading-state">Analyzing tabs...</div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: Saved Tabs -->
+    <div id="saved-tabs-section" class="view-section hidden">
+      <div class="tabs-header">
+        <button class="text-btn back-to-home-btn">← Back</button>
+        <h2>Saved for Later</h2>
+      </div>
+      <ul id="saved-tab-list" class="tab-list">
+        <!-- Saved tab cards will be injected here -->
+      </ul>
+      <button id="clear-saved-btn" class="action-btn danger-btn hidden" style="margin-top: 1rem; width: 100%;">Clear All Saved</button>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
