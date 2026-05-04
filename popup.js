@@ -28,11 +28,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedTabList = document.getElementById('saved-tab-list');
   const clearSavedBtn = document.getElementById('clear-saved-btn');
   const backBtns = document.querySelectorAll('.back-to-home-btn');
+  const selectAllTabs = document.getElementById('select-all-tabs');
+  const selectionBar = document.getElementById('selection-bar');
+  const selectionCountText = document.getElementById('selection-count-text');
+  const btnSaveSelected = document.getElementById('btn-save-selected');
+  const groupSelect = document.getElementById('group-select');
 
   // --- State ---
   let currentTabs = [];
   let processedTabs = [];
   let groupedTabs = {};
+  let selectedTabs = new Set();
   let sessionSavedThisRun = false;
   const INACTIVE_THRESHOLD_MS = 60 * 60 * 1000; // 60 minutes
 
@@ -275,6 +281,9 @@ Do you want to continue?`;
   function renderGroupedTabs() {
     groupedTabList.innerHTML = '';
     tabCount.textContent = processedTabs.length.toString();
+    selectedTabs.clear();
+    updateSelectionUI();
+    populateGroupSelect();
 
     if (processedTabs.length === 0) {
       groupedTabList.innerHTML = '<div class="empty-state">No tabs to clean up!</div>';
@@ -292,16 +301,6 @@ Do you want to continue?`;
       const header = document.createElement('div');
       header.className = 'domain-group-header';
       header.innerHTML = `<span>${domain} (${groupTabs.length})</span>`;
-      
-      const saveGroupBtn = document.createElement('button');
-      saveGroupBtn.className = 'save-group-btn';
-      saveGroupBtn.textContent = 'Save Session';
-      saveGroupBtn.addEventListener('click', () => {
-        saveSession(groupTabs, `${domain} Session`, () => {
-          alert(`Saved ${groupTabs.length} tabs from ${domain} to Vault.`);
-        });
-      });
-      header.appendChild(saveGroupBtn);
       
       groupContainer.appendChild(header);
 
@@ -345,22 +344,36 @@ Do you want to continue?`;
     let staleNudgeHtml = `<div class="age-nudge" style="color: ${textColor}">${contextLine}</div>`;
 
     li.innerHTML = `
-      ${labelsHtml ? `<div class="tab-labels">${labelsHtml}</div>` : ''}
-      <div class="tab-info">
-        <img src="${faviconUrl}" class="tab-favicon" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTRhM2I4IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEzIDJINnYxNm03LTE2djRjMCAxLjEgLjkgMiAyIDJoNG0tNi02aDZsOCA4djgiLz48L3N2Zz4='">
-        <div class="tab-text">
-          <div class="tab-title" title="${escapeHtml(tab.title)}">${escapeHtml(tab.title)}</div>
-          <div class="tab-url" title="${escapeHtml(tab.url)}">${escapeHtml(tab.url)}</div>
+      <input type="checkbox" class="tab-checkbox custom-checkbox" data-id="${tab.id}">
+      <div class="tab-main-content">
+        ${labelsHtml ? `<div class="tab-labels">${labelsHtml}</div>` : ''}
+        <div class="tab-info">
+          <img src="${faviconUrl}" class="tab-favicon" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTRhM2I4IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEzIDJINnYxNm03LTE2djRjMCAxLjEgLjkgMiAyIDJoNG0tNi02aDZsOCA4djgiLz48L3N2Zz4='">
+          <div class="tab-text">
+            <div class="tab-title" title="${escapeHtml(tab.title)}">${escapeHtml(tab.title)}</div>
+            <div class="tab-url" title="${escapeHtml(tab.url)}">${escapeHtml(tab.url)}</div>
+          </div>
+        </div>
+        ${staleNudgeHtml}
+        <input type="text" class="tab-note-input" placeholder="Add a note... (e.g. DSA Practice)" value="${escapeHtml(tab.note)}">
+        <div class="tab-actions" style="margin-top: 0.25rem;">
+          <button class="action-btn close-btn" data-action="close">Close</button>
+          <button class="action-btn keep-btn" data-action="keep">Keep</button>
+          <button class="action-btn save-btn" data-action="save">Save</button>
         </div>
       </div>
-      ${staleNudgeHtml}
-      <input type="text" class="tab-note-input" placeholder="Add a note... (e.g. DSA Practice)" value="${escapeHtml(tab.note)}">
-      <div class="tab-actions" style="margin-top: 0.25rem;">
-        <button class="action-btn close-btn" data-action="close">Close</button>
-        <button class="action-btn keep-btn" data-action="keep">Keep</button>
-        <button class="action-btn save-btn" data-action="save">Save</button>
-      </div>
     `;
+
+    // Selection logic
+    const checkbox = li.querySelector('.tab-checkbox');
+    checkbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        selectedTabs.add(tab.id);
+      } else {
+        selectedTabs.delete(tab.id);
+      }
+      updateSelectionUI();
+    });
 
     // Note saving logic
     const noteInput = li.querySelector('.tab-note-input');
@@ -400,6 +413,35 @@ Do you want to continue?`;
     });
 
     return li;
+  }
+
+  function updateSelectionUI() {
+    if (selectedTabs.size > 0) {
+      selectionBar.classList.remove('hidden');
+      selectionCountText.textContent = `${selectedTabs.size} tab${selectedTabs.size > 1 ? 's' : ''} selected`;
+    } else {
+      selectionBar.classList.add('hidden');
+    }
+    
+    if (processedTabs.length > 0 && selectedTabs.size === processedTabs.length) {
+      selectAllTabs.checked = true;
+    } else {
+      selectAllTabs.checked = false;
+    }
+  }
+
+  function populateGroupSelect() {
+    if (!groupSelect) return;
+    chrome.storage.local.get({ vaultSessions: [] }, (result) => {
+      const sessions = result.vaultSessions;
+      groupSelect.innerHTML = '<option value="new">+ New Group</option>';
+      sessions.forEach(session => {
+        const option = document.createElement('option');
+        option.value = session.id;
+        option.textContent = session.title;
+        groupSelect.appendChild(option);
+      });
+    });
   }
 
   function saveSession(tabsToSave, customTitle = null, callback = null) {
@@ -523,6 +565,70 @@ Do you want to continue?`;
     });
 
     backBtns.forEach(btn => btn.addEventListener('click', () => showView('summary')));
+
+    if (selectAllTabs) {
+      selectAllTabs.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        const checkboxes = document.querySelectorAll('.tab-checkbox');
+        
+        checkboxes.forEach(cb => {
+          cb.checked = isChecked;
+          const id = parseInt(cb.dataset.id, 10);
+          if (isChecked) {
+            selectedTabs.add(id);
+          } else {
+            selectedTabs.delete(id);
+          }
+        });
+        updateSelectionUI();
+      });
+    }
+
+    if (btnSaveSelected) {
+      btnSaveSelected.addEventListener('click', () => {
+        if (selectedTabs.size === 0) return;
+        
+        const tabsToSave = processedTabs.filter(t => selectedTabs.has(t.id));
+        const selectedGroupId = groupSelect ? groupSelect.value : 'new';
+        
+        if (selectedGroupId === 'new') {
+          const suggestedName = prompt("Name this group:", "New Group Session");
+          if (suggestedName === null) return;
+
+          saveSessionSnapshot(() => {
+            saveSession(tabsToSave, suggestedName, () => {
+              const idsToClose = Array.from(selectedTabs);
+              chrome.tabs.remove(idsToClose, () => {
+                fetchCurrentTabs(); // Refresh UI
+              });
+            });
+          });
+        } else {
+          // Add to existing group
+          saveSessionSnapshot(() => {
+            chrome.storage.local.get({ vaultSessions: [] }, (result) => {
+              let vault = result.vaultSessions;
+              const sessionIndex = vault.findIndex(s => s.id === selectedGroupId);
+              if (sessionIndex !== -1) {
+                const newTabs = tabsToSave.map(t => ({
+                  title: t.title,
+                  url: t.url,
+                  favIconUrl: t.favIconUrl,
+                  domain: t.domain
+                }));
+                vault[sessionIndex].tabs = [...vault[sessionIndex].tabs, ...newTabs];
+                chrome.storage.local.set({ vaultSessions: vault }, () => {
+                  const idsToClose = Array.from(selectedTabs);
+                  chrome.tabs.remove(idsToClose, () => {
+                    fetchCurrentTabs(); // Refresh UI
+                  });
+                });
+              }
+            });
+          });
+        }
+      });
+    }
 
     clearSavedBtn.addEventListener('click', () => {
       if(confirm('Delete all saved sessions in the vault?')) {

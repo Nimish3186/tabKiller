@@ -49,7 +49,7 @@ body {
 }
 
 .app-header h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 0.25rem; }
-.highlight { color: var(--accent-color); background: linear-gradient(135deg, #60a5fa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.highlight { color: var(--accent-color); background: linear-gradient(135deg, #60a5fa, #3b82f6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .subtitle { color: var(--text-secondary); font-size: 0.875rem; }
 .header-actions { margin-top: 10px; }
 
@@ -141,10 +141,37 @@ body {
 .tab-card {
   background-color: var(--surface-color); border: 1px solid var(--border-color);
   border-radius: var(--border-radius); padding: 0.85rem;
-  display: flex; flex-direction: column; gap: 0.75rem;
+  display: flex; gap: 0.75rem; align-items: flex-start;
   transition: transform var(--transition-speed), border-color var(--transition-speed);
 }
 .tab-card:hover { border-color: var(--surface-hover); }
+
+.tab-main-content {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 0.75rem;
+  overflow: hidden;
+}
+
+/* SELECTION UI */
+.select-all-label {
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; font-weight: 500;
+}
+.custom-checkbox {
+  appearance: none; width: 16px; height: 16px; border: 1px solid var(--text-secondary); border-radius: 4px; background-color: transparent; cursor: pointer; position: relative; transition: all 0.2s; flex-shrink: 0; margin-top: 0.15rem;
+}
+.custom-checkbox:checked {
+  background-color: var(--accent-color); border-color: var(--accent-color);
+}
+.custom-checkbox:checked::after {
+  content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.selection-bar {
+  position: sticky; bottom: 0; margin: 1rem -1.5rem -1.5rem -1.5rem; padding: 1rem 1.5rem 1.5rem 1.5rem; background-color: var(--surface-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; z-index: 10; box-shadow: 0 -8px 20px rgba(0,0,0,0.3);
+}
+#selection-count-text { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+.selection-actions { display: flex; gap: 0.5rem; align-items: center; }
+.group-select { background-color: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); padding: 0.4rem; font-size: 0.8rem; outline: none; transition: border-color 0.2s; max-width: 120px; }
+.group-select:focus { border-color: var(--accent-color); }
 
 /* SESSION VAULT */
 .session-card { background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; transition: transform var(--transition-speed); }

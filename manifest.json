@@ -4,13 +4,13 @@
   "version": "1.0",
   "description": "Clean up your tabs at the end of the day safely and effectively.",
   "icons": {
-    "16": "icon.png",
-    "48": "icon.png",
-    "128": "icon.png"
+    
+    "48": "icon48.png"
+    
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icon.png",
+    "default_icon": "icon48.png",
     "default_title": "Tab Killer"
   },
   "permissions": [

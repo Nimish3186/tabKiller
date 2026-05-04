@@ -1,137 +1,94 @@
-# Tab Killer — End-of-Day Tab Cleanup
+# 🗡️ Tab Killer
 
-A Chrome extension I built to solve a simple problem:
+> **A smart Chrome extension to take control of your browser tabs at the end of the day.**
 
-> Ending the day with 20–30 tabs open and no idea what half of them were for.
-
-Instead of just closing tabs randomly, this helps you **review, decide, and clean up safely**.
+Tab Killer helps you review, organize, group, and clean up your open tabs — without losing important work. Save sessions to a personal vault and restore them anytime.
 
 ---
 
-## What it does
+## ✨ Features
 
-### 🔘 End Day Button
+### 🧹 Auto Clean
+Automatically detect and close **duplicate** and **inactive** tabs in one click, while keeping your active and pinned tabs safe.
 
-This is the main entry point.
+### 💾 Save All & Close (End of Day)
+Save your entire session to the **Session Vault** with a custom name, then cleanly close all unpinned tabs. Your work is never lost.
 
-Click it and you get a quick summary:
-- Total tabs
-- Duplicates
-- Inactive tabs
-- Groups
+### 🔍 Review Tabs
+Manually browse through all open tabs, grouped by domain. For each tab you can:
+- **Close** — Remove the tab immediately
+- **Keep** — Dismiss from the review without closing
+- **Save** — Archive the tab to the vault and close it
+- **Add a note** — Annotate a tab with context (e.g. *"DSA Practice"*)
 
-From there you can:
-- **Auto Clean** → close duplicates + inactive tabs  
-- **Review Tabs** → go through them manually  
-- **Save All & Close** → store everything and clean up  
+### 📁 Tab Groups (New!)
+Select multiple tabs using checkboxes and save them together as a named group:
+- **Select All** toggle for quick selection
+- **Create a New Group** — Prompts for a custom name and saves to the vault
+- **Add to Existing Group** — Choose any previously saved session from the dropdown to append tabs to it
+- Selected tabs are closed automatically after saving
 
----
+### 🗄️ Session Vault
+A persistent library of all your saved sessions:
+- **Restore** any session — reopens all tabs at once
+- **Rename** sessions inline
+- **Delete** individual sessions or clear the vault entirely
 
-### 🧠 “Why did I open this?”
-
-This is the part I personally needed the most.
-
-For each tab, you’ll see:
-- When it was opened  
-- A hint like:  
-  - *“Opened 2h ago • Possibly no longer needed”*
-
-You can also add your own note:
-- *“DSA practice”*
-- *“Watch later”*
-
-It sounds small, but it really helps when you're staring at a bunch of random tabs.
+### ↩️ Restore Last Session
+A one-click button to instantly reopen the last auto-saved snapshot of your browser session.
 
 ---
 
-### 📦 Session Vault
+## 🚀 How to Install (Developer Mode)
 
-Instead of losing everything, you can save tabs as sessions.
-
-Examples:
-- “DSA Practice Night”
-- “Cybersecurity Research”
-- “Random stuff”
-
-You can reopen everything later with one click.
+1. Clone or download this repository.
+2. Open Chrome and navigate to `chrome://extensions`.
+3. Enable **Developer Mode** (toggle in the top right corner).
+4. Click **Load unpacked** and select the `tabKiller` folder.
+5. The Tab Killer icon will appear in your Chrome toolbar.
 
 ---
 
-### ⚡ Smart Cleanup
+## 🛠️ Tech Stack
 
-- Detects duplicate tabs  
-- Flags inactive ones  
-- Keeps pinned + active tabs safe  
-
-Nothing gets closed without confirmation.
-
----
-
-### 🔒 Safety
-
-Before any bulk action:
-- A full session snapshot is saved
-
-You can always:
-- **Restore Last Session**
+- **Manifest V3** Chrome Extension API
+- Vanilla **JavaScript** — no frameworks, no dependencies
+- **Chrome Storage API** for persistent session data
+- **CSS3** with custom properties, glassmorphism effects, and micro-animations
+- **Google Fonts** (Inter) for premium typography
 
 ---
 
-## Typical flow
+## 📸 Screenshots
 
-1. Open tabs during the day  
-2. Click **End Day**  
-3. See what’s actually useful  
-4. Clean up or save  
-
-That’s it.
+> *(Add screenshots of the popup here)*
 
 ---
 
-## Tech stack
+## 📂 Project Structure
 
-- Chrome Extension (Manifest V3)
-- JavaScript
-- Chrome Tabs API
-- Chrome Storage API
-
----
-
-## Why I built this
-When it came time to decide which tabs to close and which to keep, 
--it always felt like a headache. 
--I often had to manually create tab groups just to manage the mess.
--To solve this problem, 
-       
-I built Tab Killer.
-
-
-
-I just wanted something that:
-- shows what I opened  
-- helps me decide quickly  
-- doesn’t lose anything  
+```
+tabKiller/
+├── manifest.json       # Extension configuration (Manifest V3)
+├── background.js       # Service worker for tab metadata tracking
+├── popup.html          # Extension popup UI
+├── popup.js            # All UI logic, tab management, and vault operations
+├── popup.css           # Dark theme styles with premium design
+└── icon*.png           # Extension icons
+```
 
 ---
 
-## Possible improvements
+## 🤝 Contributing
 
-- Better tab categorization  
-- Smarter session naming  
-- Sync across devices  
+This is a personal productivity project. Feel free to fork it and build on top of it!
 
 ---
 
-## How to run
+## 📄 License
 
-1. Clone the repo  
-2. Go to `chrome://extensions/`  
-3. Enable Developer Mode  
-4. Click “Load unpacked”  
-5. Select the project folder  
+MIT License — free to use, share, and modify.
 
 ---
 
-## Author
-
-Nimish Jindal
+*Built with ❤️ to make browser hygiene painless.*

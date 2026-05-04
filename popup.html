@@ -69,11 +69,26 @@
       <div class="tabs-header">
         <button class="text-btn back-to-home-btn">← Back</button>
         <h2 id="current-tabs-title">Review (<span id="tab-count">0</span>)</h2>
+        <label class="select-all-label">
+          <input type="checkbox" id="select-all-tabs" class="custom-checkbox">
+          Select All
+        </label>
       </div>
       
       <!-- Container for grouped tabs -->
       <div id="grouped-tab-list" class="grouped-tab-list">
         <div class="loading-state">Analyzing tabs...</div>
+      </div>
+
+      <!-- Selection Action Bar -->
+      <div id="selection-bar" class="selection-bar hidden">
+        <span id="selection-count-text">0 selected</span>
+        <div class="selection-actions">
+          <select id="group-select" class="group-select">
+            <option value="new">+ New Group</option>
+          </select>
+          <button id="btn-save-selected" class="action-btn open-btn" style="flex: none; padding: 0.5rem 1rem;">Save</button>
+        </div>
       </div>
     </div>
 
