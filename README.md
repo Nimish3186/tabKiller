@@ -23,10 +23,10 @@ Manually browse through all open tabs, grouped by domain. For each tab you can:
 
 ### 📁 Tab Groups (New!)
 Select multiple tabs using checkboxes and save them together as a named group:
-- **Select All** toggle for quick selection
-- **Create a New Group** — Prompts for a custom name and saves to the vault
+- **Selective Grouping** — Select multiple tabs and save them as a named session group with a sleek **inline input** (no more annoying browser prompts!)
+- **Selection Persistence** — Your selected tabs stay selected even when you close other tabs or change notes
 - **Add to Existing Group** — Choose any previously saved session from the dropdown to append tabs to it
-- Selected tabs are closed automatically after saving
+- **Context-Aware Notes** — Add notes (e.g., "DSA Practice") to tabs that persist until they are saved or closed
 
 ### 🗄️ Session Vault
 A persistent library of all your saved sessions:

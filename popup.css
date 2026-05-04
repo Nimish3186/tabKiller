@@ -170,8 +170,11 @@ body {
 }
 #selection-count-text { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
 .selection-actions { display: flex; gap: 0.5rem; align-items: center; }
-.group-select { background-color: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); padding: 0.4rem; font-size: 0.8rem; outline: none; transition: border-color 0.2s; max-width: 120px; }
+.group-select { background-color: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); padding: 0.4rem; font-size: 0.8rem; outline: none; transition: border-color 0.2s; max-width: 120px; flex-shrink: 0; }
 .group-select:focus { border-color: var(--accent-color); }
+
+.new-group-input { background-color: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); padding: 0.4rem 0.75rem; font-size: 0.8rem; outline: none; transition: all 0.2s; width: 100%; min-width: 100px; }
+.new-group-input:focus { border-color: var(--accent-color); background-color: rgba(255,255,255,0.1); }
 
 /* SESSION VAULT */
 .session-card { background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; transition: transform var(--transition-speed); }

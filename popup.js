@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectionCountText = document.getElementById('selection-count-text');
   const btnSaveSelected = document.getElementById('btn-save-selected');
   const groupSelect = document.getElementById('group-select');
+  const newGroupNameInput = document.getElementById('new-group-name');
 
   // --- State ---
   let currentTabs = [];
@@ -281,7 +282,15 @@ Do you want to continue?`;
   function renderGroupedTabs() {
     groupedTabList.innerHTML = '';
     tabCount.textContent = processedTabs.length.toString();
-    selectedTabs.clear();
+    // Persistence: Don't clear selectedTabs if we are just re-rendering existing data
+    // But we should remove IDs that no longer exist
+    const currentTabIds = new Set(processedTabs.map(t => t.id));
+    for (let id of selectedTabs) {
+      if (!currentTabIds.has(id)) {
+        selectedTabs.delete(id);
+      }
+    }
+    
     updateSelectionUI();
     populateGroupSelect();
 
@@ -344,7 +353,7 @@ Do you want to continue?`;
     let staleNudgeHtml = `<div class="age-nudge" style="color: ${textColor}">${contextLine}</div>`;
 
     li.innerHTML = `
-      <input type="checkbox" class="tab-checkbox custom-checkbox" data-id="${tab.id}">
+      <input type="checkbox" class="tab-checkbox custom-checkbox" data-id="${tab.id}" ${selectedTabs.has(tab.id) ? 'checked' : ''}>
       <div class="tab-main-content">
         ${labelsHtml ? `<div class="tab-labels">${labelsHtml}</div>` : ''}
         <div class="tab-info">
@@ -402,12 +411,19 @@ Do you want to continue?`;
     });
 
     li.querySelector('.save-btn').addEventListener('click', () => {
+      const tabData = { 
+        title: tab.title, 
+        url: tab.url, 
+        favIconUrl: tab.favIconUrl, 
+        domain: tab.domain,
+        note: noteInput.value
+      };
+
       saveSessionSnapshot(() => {
-        const tabData = { title: tab.title, url: tab.url, favIconUrl: tab.favIconUrl, savedAt: Date.now() };
-        chrome.storage.local.get({ savedTabs: [] }, (result) => {
-          chrome.storage.local.set({ savedTabs: [...result.savedTabs, tabData] }, () => {
-            chrome.tabs.remove(tab.id, () => fetchCurrentTabs());
-          });
+        const suggestedName = prompt("Name this group:", tab.domain ? `${tab.domain.charAt(0).toUpperCase() + tab.domain.slice(1)} Session` : "New Session");
+        if (suggestedName === null) return;
+        saveSession([tabData], suggestedName, () => {
+          chrome.tabs.remove(tab.id, () => fetchCurrentTabs());
         });
       });
     });
@@ -432,6 +448,7 @@ Do you want to continue?`;
 
   function populateGroupSelect() {
     if (!groupSelect) return;
+    const currentValue = groupSelect.value;
     chrome.storage.local.get({ vaultSessions: [] }, (result) => {
       const sessions = result.vaultSessions;
       groupSelect.innerHTML = '<option value="new">+ New Group</option>';
@@ -441,6 +458,17 @@ Do you want to continue?`;
         option.textContent = session.title;
         groupSelect.appendChild(option);
       });
+      
+      // Restore value if it still exists, otherwise default to new
+      if (currentValue && [...groupSelect.options].some(o => o.value === currentValue)) {
+        groupSelect.value = currentValue;
+      }
+      
+      if (groupSelect.value === 'new') {
+        newGroupNameInput.classList.remove('hidden');
+      } else {
+        newGroupNameInput.classList.add('hidden');
+      }
     });
   }
 
@@ -566,6 +594,17 @@ Do you want to continue?`;
 
     backBtns.forEach(btn => btn.addEventListener('click', () => showView('summary')));
 
+    if (groupSelect) {
+      groupSelect.addEventListener('change', () => {
+        if (groupSelect.value === 'new') {
+          newGroupNameInput.classList.remove('hidden');
+          newGroupNameInput.focus();
+        } else {
+          newGroupNameInput.classList.add('hidden');
+        }
+      });
+    }
+
     if (selectAllTabs) {
       selectAllTabs.addEventListener('change', (e) => {
         const isChecked = e.target.checked;
@@ -592,13 +631,14 @@ Do you want to continue?`;
         const selectedGroupId = groupSelect ? groupSelect.value : 'new';
         
         if (selectedGroupId === 'new') {
-          const suggestedName = prompt("Name this group:", "New Group Session");
-          if (suggestedName === null) return;
-
+          const suggestedName = newGroupNameInput.value.trim() || "New Group Session";
+          
           saveSessionSnapshot(() => {
             saveSession(tabsToSave, suggestedName, () => {
-              const idsToClose = Array.from(selectedTabs);
+              const idsToClose = tabsToSave.map(t => t.id);
               chrome.tabs.remove(idsToClose, () => {
+                newGroupNameInput.value = '';
+                newGroupNameInput.classList.add('hidden');
                 fetchCurrentTabs(); // Refresh UI
               });
             });
@@ -618,7 +658,7 @@ Do you want to continue?`;
                 }));
                 vault[sessionIndex].tabs = [...vault[sessionIndex].tabs, ...newTabs];
                 chrome.storage.local.set({ vaultSessions: vault }, () => {
-                  const idsToClose = Array.from(selectedTabs);
+                  const idsToClose = tabsToSave.map(t => t.id);
                   chrome.tabs.remove(idsToClose, () => {
                     fetchCurrentTabs(); // Refresh UI
                   });
