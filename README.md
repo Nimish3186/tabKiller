@@ -21,7 +21,7 @@ Manually browse through all open tabs, grouped by domain. For each tab you can:
 - **Save** — Archive the tab to the vault and close it
 - **Add a note** — Annotate a tab with context (e.g. *"DSA Practice"*)
 
-### 📁 Tab Groups (New!)
+### 📁 Tab Groups 
 Select multiple tabs using checkboxes and save them together as a named group:
 - **Selective Grouping** — Select multiple tabs and save them as a named session group with a sleek **inline input** (no more annoying browser prompts!)
 - **Selection Persistence** — Your selected tabs stay selected even when you close other tabs or change notes
@@ -45,23 +45,14 @@ A one-click button to instantly reopen the last auto-saved snapshot of your brow
 2. Open Chrome and navigate to `chrome://extensions`.
 3. Enable **Developer Mode** (toggle in the top right corner).
 4. Click **Load unpacked** and select the `tabKiller` folder.
-5. The Tab Killer icon will appear in your Chrome toolbar.
+5. The Tab Killer icon will appear in your Chrome toolbar PIN IT !!!
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Manifest V3** Chrome Extension API
-- Vanilla **JavaScript** — no frameworks, no dependencies
-- **Chrome Storage API** for persistent session data
-- **CSS3** with custom properties, glassmorphism effects, and micro-animations
-- **Google Fonts** (Inter) for premium typography
-
----
 
 ## 📸 Screenshots
 
-> *(Add screenshots of the popup here)*
+
 
 ---
 
@@ -79,16 +70,5 @@ tabKiller/
 
 ---
 
-## 🤝 Contributing
 
-This is a personal productivity project. Feel free to fork it and build on top of it!
-
----
-
-## 📄 License
-
-MIT License — free to use, share, and modify.
-
----
-
-*Built with ❤️ to make browser hygiene painless.*
+*Built with ❤️ .*
