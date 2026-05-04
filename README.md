@@ -47,14 +47,6 @@ A one-click button to instantly reopen the last auto-saved snapshot of your brow
 4. Click **Load unpacked** and select the `tabKiller` folder.
 5. The Tab Killer icon will appear in your Chrome toolbar PIN IT !!!
 
----
-
-
-## 📸 Screenshots
-
-
-
----
 
 ## 📂 Project Structure
 
