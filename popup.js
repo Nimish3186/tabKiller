@@ -504,7 +504,8 @@ Do you want to continue?`;
         title: t.title,
         url: t.url,
         favIconUrl: t.favIconUrl,
-        domain: t.domain
+        domain: t.domain,
+        note: t.note || ''
       })),
       createdAt: Date.now()
     };
@@ -560,7 +561,22 @@ Do you want to continue?`;
         });
 
         li.querySelector('.open-btn').addEventListener('click', () => {
-          session.tabs.forEach(tab => chrome.tabs.create({ url: tab.url, active: false }));
+          session.tabs.forEach(tab => {
+            chrome.tabs.create({ url: tab.url, active: false }, (newTab) => {
+              if (tab.note) {
+                chrome.storage.local.get({ tabMetadata: {} }, (result) => {
+                  const metadata = result.tabMetadata || {};
+                  metadata[newTab.id] = {
+                    url: tab.url,
+                    title: tab.title,
+                    createdAt: Date.now(),
+                    note: tab.note
+                  };
+                  chrome.storage.local.set({ tabMetadata: metadata });
+                });
+              }
+            });
+          });
           removeSession(index, li);
         });
 
@@ -654,7 +670,8 @@ Do you want to continue?`;
                   title: t.title,
                   url: t.url,
                   favIconUrl: t.favIconUrl,
-                  domain: t.domain
+                  domain: t.domain,
+                  note: t.note || ''
                 }));
                 vault[sessionIndex].tabs = [...vault[sessionIndex].tabs, ...newTabs];
                 chrome.storage.local.set({ vaultSessions: vault }, () => {
